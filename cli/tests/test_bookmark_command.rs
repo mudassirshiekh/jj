@@ -1898,6 +1898,57 @@ fn test_bookmark_list_conflicted() {
     "###);
 }
 
+#[test]
+fn test_bookmark_warns_multiple() {
+    let test_env = TestEnvironment::default();
+    test_env.jj_cmd_ok(test_env.env_root(), &["git", "init", "repo"]);
+    let repo_path = test_env.env_root().join("repo");
+
+    // Test multiple invalid bookmarks at once
+    let (out, error) = test_env.jj_cmd_ok(
+        &repo_path,
+        &["bookmark", "set", "main@origin", "dev@remote", "@-"],
+    );
+    insta::assert_snapshot!(out, @"");
+    insta::assert_snapshot!(error, @r"
+    Bookmarks containing '@':  main@origin
+      dev@remote
+    Hint: To track remote bookmarks, use: jj bookmark --track main@origin dev@remote
+    Bookmarks resembling revsets:  @-
+    Warning: These names look like revset expressions and might cause confusion: @-
+    Hint: Maybe you meant to use `jj bookmark set -r @-` instead?
+    Created 3 bookmarks pointing to qpvuntsm 230dd059 @- dev@remote main@origin | (empty) (no description set)
+    Hint: Use -r to specify the target revision.
+    Hint: Consider using `jj bookmark move` if your intention was to move existing bookmarks.
+    ");
+}
+
+#[test]
+fn test_bookmark_warns_single() {
+    let test_env = TestEnvironment::default();
+    test_env.jj_cmd_ok(test_env.env_root(), &["git", "init", "repo"]);
+    let repo_path = test_env.env_root().join("repo");
+
+    // Test single invalid bookmark
+    let (out, error) = test_env.jj_cmd_ok(&repo_path, &["bookmark", "set", "feature@remote"]);
+    insta::assert_snapshot!(out, @"");
+    insta::assert_snapshot!(error, @r"
+    Bookmarks containing '@':  feature@remote
+    Hint: To track remote bookmarks, use: jj bookmark --track feature@remote
+    Created 1 bookmarks pointing to qpvuntsm 230dd059 feature@remote | (empty) (no description set)
+    Hint: Consider using `jj bookmark move` if your intention was to move existing bookmarks.
+    ");
+
+    let (out, error) = test_env.jj_cmd_ok(&repo_path, &["bookmark", "create", "a..b"]);
+    insta::assert_snapshot!(out, @"");
+    insta::assert_snapshot!(error, @r"
+    Bookmarks resembling revsets:  a..b
+    Warning: These names look like revset expressions and might cause confusion: a..b
+    Hint: Maybe you meant to use `jj bookmark create -r a..b` instead?
+    Created 1 bookmarks pointing to qpvuntsm 230dd059 a..b feature@remote | (empty) (no description set)
+    ");
+}
+
 fn get_log_output(test_env: &TestEnvironment, cwd: &Path) -> String {
     let template = r#"bookmarks ++ " " ++ commit_id.short()"#;
     test_env.jj_cmd_success(cwd, &["log", "-T", template])
