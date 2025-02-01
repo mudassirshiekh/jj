@@ -23,6 +23,7 @@
 </div>
 
 ## Introduction
+## By Mudassir Alam
 
 Jujutsu is a powerful [version control system](https://en.wikipedia.org/wiki/Version_control)
 for software projects. You use it to get a copy of your code, track changes
